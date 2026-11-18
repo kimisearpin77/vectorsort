@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vector or Scalar? Category Sort</title>
+<style>
+  :root {
+    --scalar: #1f6feb;
+    --scalar-bg: #e8f1ff;
+    --vector: #c2410c;
+    --vector-bg: #fff1e8;
+    --ink: #1f2933;
+    --muted: #5f6b7a;
+    --card: #ffffff;
+    --line: #d6dbe1;
+    --good: #15803d;
+    --good-bg: #e7f7ec;
+    --bad: #b91c1c;
+    --bad-bg: #fde8e8;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 16px;
+    font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: #f6f7f9;
+    line-height: 1.45;
+  }
+  .wrap { max-width: 1000px; margin: 0 auto; }
+  h1 { font-size: 1.6rem; margin: 0 0 4px; text-align: center; }
+  .subtitle { text-align: center; color: var(--muted); margin: 0 0 16px; }
+
+  /* Definitions */
+  .defs { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+  .def { border-radius: 10px; padding: 12px 14px; border-left: 6px solid; background: var(--card); }
+  .def.scalar { border-color: var(--scalar); background: var(--scalar-bg); }
+  .def.vector { border-color: var(--vector); background: var(--vector-bg); }
+  .def h2 { margin: 0 0 6px; font-size: 1.15rem; }
+  .def.scalar h2 { color: var(--scalar); }
+  .def.vector h2 { color: var(--vector); }
+  .def p { margin: 0 0 6px; }
+  .def .ex { font-size: 0.92rem; color: var(--muted); margin: 0; }
+
+  .instructions {
+    background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+    padding: 10px 14px; margin-bottom: 14px; font-size: 0.95rem;
+  }
+
+  /* Card bank */
+  .bank {
+    background: var(--card); border: 2px dashed var(--line); border-radius: 10px;
+    padding: 10px; min-height: 70px; display: flex; flex-wrap: wrap; gap: 8px;
+    align-content: flex-start; margin-bottom: 14px;
+  }
+  .bank-label { font-weight: 600; margin: 0 0 6px; }
+
+  .item {
+    background: #fff; border: 2px solid #9aa5b1; border-radius: 8px;
+    padding: 7px 12px; font-size: 0.95rem; cursor: grab; user-select: none;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.08); transition: transform .1s, box-shadow .1s;
+    font-family: inherit; color: var(--ink);
+  }
+  .item:hover { box-shadow: 0 3px 6px rgba(0,0,0,0.15); }
+  .item:focus-visible { outline: 3px solid #7c3aed; outline-offset: 2px; }
+  .item.selected { border-color: #7c3aed; background: #f3ecff; transform: translateY(-2px); }
+  .item.dragging { opacity: 0.4; }
+  .item.correct { border-color: var(--good); background: var(--good-bg); }
+  .item.incorrect { border-color: var(--bad); background: var(--bad-bg); }
+  .item .mark { font-weight: 700; margin-left: 6px; }
+
+  /* Bins */
+  .bins { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .bin {
+    border-radius: 10px; border: 3px solid; min-height: 220px; padding: 10px;
+    display: flex; flex-direction: column; background: var(--card); cursor: pointer;
+  }
+  .bin.scalar { border-color: var(--scalar); }
+  .bin.vector { border-color: var(--vector); }
+  .bin h3 { margin: 0 0 8px; text-align: center; font-size: 1.15rem; }
+  .bin.scalar h3 { color: var(--scalar); }
+  .bin.vector h3 { color: var(--vector); }
+  .bin .drop { flex: 1; display: flex; flex-wrap: wrap; gap: 8px; align-content: flex-start; }
+  .bin.over.scalar { background: var(--scalar-bg); }
+  .bin.over.vector { background: var(--vector-bg); }
+  .bin.target-ready { box-shadow: 0 0 0 4px rgba(124,58,237,0.25); }
+
+  /* Controls */
+  .controls { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 16px 0 10px; }
+  button.btn {
+    font-family: inherit; font-size: 1rem; padding: 9px 18px; border-radius: 8px;
+    border: none; cursor: pointer; font-weight: 600;
+  }
+  .btn.check { background: #15803d; color: #fff; }
+  .btn.reset { background: #4b5563; color: #fff; }
+  .btn.show { background: #7c3aed; color: #fff; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .result {
+    text-align: center; font-size: 1.1rem; font-weight: 600; min-height: 1.5em; margin-bottom: 8px;
+  }
+  .feedback {
+    background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+    padding: 10px 14px; font-size: 0.93rem; display: none;
+  }
+  .feedback.show { display: block; }
+  .feedback h4 { margin: 0 0 6px; }
+  .feedback ul { margin: 0; padding-left: 20px; }
+
+  @media (max-width: 640px) {
+    .defs, .bins { grid-template-columns: 1fr; }
+    h1 { font-size: 1.35rem; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Vector or Scalar?</h1>
+  <p class="subtitle">Sort each physical quantity into the correct category.</p>
+
+  <div class="defs">
+    <div class="def scalar">
+      <h2>Scalar Quantity</h2>
+      <p>A quantity that is fully described by its <strong>magnitude</strong> (size or amount) and unit alone. It has <strong>no direction</strong>.</p>
+      <p class="ex">Example: a temperature of 25&nbsp;°C, or a mass of 3&nbsp;kg.</p>
+    </div>
+    <div class="def vector">
+      <h2>Vector Quantity</h2>
+      <p>A quantity that has both <strong>magnitude</strong> and <strong>direction</strong>, and combines using the rules of vector addition.</p>
+      <p class="ex">Example: a velocity of 20&nbsp;m/s <em>north</em>, or a force of 10&nbsp;N <em>downward</em>.</p>
+    </div>
+  </div>
+
+  <div class="instructions">
+    <strong>Directions:</strong> Drag each quantity into the <span style="color:var(--scalar);font-weight:600">Scalar</span> or
+    <span style="color:var(--vector);font-weight:600">Vector</span> box. On a tablet or keyboard, tap/press a card to select it, then tap/press a box.
+    Click a placed card to send it back. When every card is sorted, press <strong>Check Answers</strong>.
+  </div>
+
+  <p class="bank-label">Quantities to sort (<span id="remaining">0</span> left):</p>
+  <div class="bank" id="bank" data-zone="bank"></div>
+
+  <div class="bins">
+    <div class="bin scalar" id="bin-scalar" data-zone="scalar" tabindex="0" role="button" aria-label="Scalar box">
+      <h3>Scalar</h3>
+      <div class="drop" data-zone="scalar"></div>
+    </div>
+    <div class="bin vector" id="bin-vector" data-zone="vector" tabindex="0" role="button" aria-label="Vector box">
+      <h3>Vector</h3>
+      <div class="drop" data-zone="vector"></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="btn check" id="checkBtn" disabled>Check Answers</button>
+    <button class="btn show" id="showBtn">Show Answers</button>
+    <button class="btn reset" id="resetBtn">Start Over</button>
+  </div>
+
+  <div class="result" id="result" aria-live="polite"></div>
+
+  <div class="feedback" id="feedback">
+    <h4>Review the ones you missed:</h4>
+    <ul id="feedbackList"></ul>
+  </div>
+</div>
+
+<script>
+(function () {
+  const ITEMS = [
+    // Scalars
+    { name: "Mass", type: "scalar" },
+    { name: "Distance", type: "scalar" },
+    { name: "Speed", type: "scalar" },
+    { name: "Time", type: "scalar" },
+    { name: "Temperature", type: "scalar" },
+    { name: "Energy", type: "scalar" },
+    { name: "Work", type: "scalar" },
+    { name: "Power", type: "scalar" },
+    { name: "Volume", type: "scalar" },
+    { name: "Density", type: "scalar" },
+    { name: "Pressure", type: "scalar" },
+    { name: "Electric charge", type: "scalar" },
+    { name: "Electric potential (Voltage)", type: "scalar" },
+    { name: "Frequency", type: "scalar" },
+    { name: "Wavelength", type: "scalar" },
+    { name: "Entropy", type: "scalar" },
+    { name: "Specific heat capacity", type: "scalar" },
+    { name: "Refractive index", type: "scalar" },
+    { name: "Electric current", type: "scalar",
+      note: "Electric current flows in a direction along a wire, but it does NOT follow the laws of vector addition, so it is a scalar." },
+    // Vectors
+    { name: "Displacement", type: "vector" },
+    { name: "Velocity", type: "vector" },
+    { name: "Acceleration", type: "vector" },
+    { name: "Force", type: "vector" },
+    { name: "Weight", type: "vector",
+      note: "Weight is a force (gravity pulling toward Earth's center), so it has direction. Mass is the scalar." },
+    { name: "Momentum", type: "vector" },
+    { name: "Impulse", type: "vector" },
+    { name: "Torque", type: "vector" },
+    { name: "Angular velocity", type: "vector" },
+    { name: "Angular momentum", type: "vector" },
+    { name: "Electric field intensity", type: "vector" },
+    { name: "Magnetic field induction", type: "vector" },
+    { name: "Gravitational field strength", type: "vector" },
+    { name: "Polarization vector", type: "vector" },
+    { name: "Poynting vector", type: "vector" }
+  ];
+
+  const bank = document.getElementById("bank");
+  const drops = {
+    bank: bank,
+    scalar: document.querySelector('#bin-scalar .drop'),
+    vector: document.querySelector('#bin-vector .drop')
+  };
+  const bins = {
+    scalar: document.getElementById("bin-scalar"),
+    vector: document.getElementById("bin-vector")
+  };
+  const checkBtn = document.getElementById("checkBtn");
+  const showBtn = document.getElementById("showBtn");
+  const resetBtn = document.getElementById("resetBtn");
+  const resultEl = document.getElementById("result");
+  const feedback = document.getElementById("feedback");
+  const feedbackList = document.getElementById("feedbackList");
+  const remainingEl = document.getElementById("remaining");
+
+  let selected = null;
+  let dragged = null;
+
+  function shuffle(a) {
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  function clearMarks() {
+    document.querySelectorAll(".item").forEach(el => {
+      el.classList.remove("correct", "incorrect");
+      const m = el.querySelector(".mark");
+      if (m) m.remove();
+    });
+    resultEl.textContent = "";
+    feedback.classList.remove("show");
+  }
+
+  function updateState() {
+    const left = bank.querySelectorAll(".item").length;
+    remainingEl.textContent = left;
+    checkBtn.disabled = left > 0;
+  }
+
+  function select(el) {
+    if (selected) selected.classList.remove("selected");
+    if (selected === el) { selected = null; toggleTargets(false); return; }
+    selected = el;
+    if (el) el.classList.add("selected");
+    toggleTargets(!!el);
+  }
+
+  function toggleTargets(on) {
+    Object.values(bins).forEach(b => b.classList.toggle("target-ready", on));
+  }
+
+  function moveTo(el, zone) {
+    clearMarks();
+    drops[zone].appendChild(el);
+    el.dataset.zone = zone;
+    select(null);
+    updateState();
+  }
+
+  function makeItem(item) {
+    const el = document.createElement("button");
+    el.type = "button";
+    el.className = "item";
+    el.textContent = item.name;
+    el.draggable = true;
+    el.dataset.type = item.type;
+    el.dataset.zone = "bank";
+    if (item.note) el.dataset.note = item.note;
+
+    el.addEventListener("dragstart", e => {
+      dragged = el;
+      el.classList.add("dragging");
+      e.dataTransfer.effectAllowed = "move";
+      try { e.dataTransfer.setData("text/plain", item.name); } catch (_) {}
+    });
+    el.addEventListener("dragend", () => {
+      el.classList.remove("dragging");
+      dragged = null;
+      document.querySelectorAll(".over").forEach(z => z.classList.remove("over"));
+    });
+    el.addEventListener("click", e => {
+      e.stopPropagation();
+      if (el.dataset.zone !== "bank") {
+        // Placed card: send back to bank
+        moveTo(el, "bank");
+      } else {
+        select(el);
+      }
+    });
+    return el;
+  }
+
+  function setupZone(container, zone, highlightEl) {
+    container.addEventListener("dragover", e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      if (highlightEl) highlightEl.classList.add("over");
+    });
+    container.addEventListener("dragleave", e => {
+      if (highlightEl && !highlightEl.contains(e.relatedTarget)) highlightEl.classList.remove("over");
+    });
+    container.addEventListener("drop", e => {
+      e.preventDefault();
+      if (highlightEl) highlightEl.classList.remove("over");
+      if (dragged) moveTo(dragged, zone);
+    });
+  }
+
+  setupZone(bins.scalar, "scalar", bins.scalar);
+  setupZone(bins.vector, "vector", bins.vector);
+  setupZone(bank, "bank", null);
+
+  Object.entries(bins).forEach(([zone, binEl]) => {
+    binEl.addEventListener("click", () => { if (selected) moveTo(selected, zone); });
+    binEl.addEventListener("keydown", e => {
+      if ((e.key === "Enter" || e.key === " ") && e.target === binEl && selected) {
+        e.preventDefault();
+        const el = selected;
+        moveTo(el, zone);
+        const next = bank.querySelector(".item");
+        (next || el).focus();
+      }
+    });
+  });
+
+  function grade(reveal) {
+    const placed = document.querySelectorAll(".bin .item");
+    let correct = 0;
+    feedbackList.innerHTML = "";
+    clearMarks();
+    placed.forEach(el => {
+      const ok = el.dataset.zone === el.dataset.type;
+      el.classList.add(ok ? "correct" : "incorrect");
+      const mark = document.createElement("span");
+      mark.className = "mark";
+      mark.textContent = ok ? "✓" : "✗";
+      mark.setAttribute("aria-label", ok ? "correct" : "incorrect");
+      el.appendChild(mark);
+      if (ok) correct++;
+      else {
+        const li = document.createElement("li");
+        const label = el.dataset.type === "scalar" ? "Scalar" : "Vector";
+        li.innerHTML = "<strong>" + el.firstChild.textContent + "</strong> is a <strong>" + label + "</strong>." +
+          (el.dataset.note ? " " + el.dataset.note : "");
+        feedbackList.appendChild(li);
+      }
+    });
+    if (!reveal) {
+      const total = ITEMS.length;
+      const pct = Math.round((correct / total) * 100);
+      resultEl.textContent = "Score: " + correct + " / " + total + " (" + pct + "%)" +
+        (correct === total ? " 🎉 Perfect! Great work!" : " — Click any ✗ card to move it back and try again.");
+      resultEl.style.color = correct === total ? "var(--good)" : "var(--ink)";
+      if (feedbackList.children.length) feedback.classList.add("show");
+    }
+  }
+
+  checkBtn.addEventListener("click", () => grade(false));
+
+  showBtn.addEventListener("click", () => {
+    select(null);
+    document.querySelectorAll(".item").forEach(el => {
+      drops[el.dataset.type].appendChild(el);
+      el.dataset.zone = el.dataset.type;
+    });
+    updateState();
+    grade(true);
+    resultEl.textContent = "Answers shown. Press Start Over to try it yourself.";
+    resultEl.style.color = "var(--muted)";
+  });
+
+  function reset() {
+    select(null);
+    Object.values(drops).forEach(d => { d.querySelectorAll(".item").forEach(i => i.remove()); });
+    clearMarks();
+    shuffle(ITEMS.slice()).forEach(item => bank.appendChild(makeItem(item)));
+    updateState();
+  }
+  resetBtn.addEventListener("click", reset);
+
+  reset();
+})();
+</script>
+</body>
+</html>
